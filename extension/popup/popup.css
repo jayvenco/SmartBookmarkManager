@@ -1,0 +1,7 @@
+body { width: 400px; padding: 14px; }
+form { display: grid; gap: 10px; }
+.url { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -4px; }
+.actions { display: flex; gap: 8px; }
+.actions .ghost { margin-left: auto; }
+.note { padding: 6px 10px; border-radius: 6px; background: var(--chip); color: var(--chip-text); font-size: 12px; }
+.hint { font-size: 11px; }

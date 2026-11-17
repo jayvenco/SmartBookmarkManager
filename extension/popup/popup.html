@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add bookmark</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div id="setup" class="hidden">
+  <p>Connect Smart Bookmark Manager to your server first.</p>
+  <button id="open-options">Open settings</button>
+</div>
+
+<form id="form" class="hidden" autocomplete="off">
+  <div id="existing-note" class="note hidden">Already bookmarked. Editing the existing one.</div>
+  <div id="readonly-note" class="note hidden">This is a global bookmark managed by an admin (read-only).</div>
+
+  <label>Name
+    <input id="title" required>
+  </label>
+  <div id="url" class="muted url"></div>
+
+  <label>Tags
+    <div id="tags" class="chips"></div>
+  </label>
+
+  <label>Category
+    <select id="collection"></select>
+  </label>
+  <input id="new-collection" class="hidden" placeholder="New category name">
+
+  <label>Notes (optional)
+    <textarea id="notes" rows="2"></textarea>
+  </label>
+
+  <div id="error" class="error"></div>
+  <div class="actions">
+    <button type="submit" id="save">Save</button>
+    <button type="button" id="delete" class="danger hidden">Delete</button>
+    <button type="button" id="manager" class="ghost">Open manager</button>
+  </div>
+  <div class="muted hint">Enter in the tag field with no text saves. Ctrl+Enter saves from anywhere.</div>
+</form>
+<script type="module" src="popup.js"></script>
+</body>
+</html>

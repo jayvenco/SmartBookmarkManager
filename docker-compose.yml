@@ -1,0 +1,12 @@
+services:
+  bookmarks:
+    build: ./backend
+    container_name: smart-bookmark-manager
+    restart: unless-stopped
+    ports:
+      - "7774:7774"
+    volumes:
+      - sbm-data:/app/data
+
+volumes:
+  sbm-data:

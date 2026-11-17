@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Bookmark Manager: Settings</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="options.css">
+</head>
+<body>
+<main>
+  <h1>Smart Bookmark Manager</h1>
+
+  <section id="login-card" class="card">
+    <h2>Connect to your server</h2>
+    <form id="login-form" autocomplete="on">
+      <label>Server address <input id="server" type="url" placeholder="https://bookmarks.example.com" required></label>
+      <label>Username <input id="username" autocomplete="username" required></label>
+      <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
+      <div id="login-error" class="error"></div>
+      <button type="submit">Connect</button>
+    </form>
+    <form id="change-form" class="hidden">
+      <p>The server requires you to choose a new password first.</p>
+      <label>New password (min. 8 characters) <input id="new-password" type="password" autocomplete="new-password" minlength="8" required></label>
+      <div id="change-error" class="error"></div>
+      <button type="submit">Change password and continue</button>
+    </form>
+  </section>
+
+  <section id="connected-card" class="card hidden">
+    <h2>Connected</h2>
+    <p id="connected-info"></p>
+    <p id="sync-info" class="muted"></p>
+    <div class="actions">
+      <button id="sync-now">Sync now</button>
+      <button id="open-manager" class="ghost">Open manager</button>
+      <button id="disconnect" class="ghost">Disconnect</button>
+    </div>
+  </section>
+
+  <section id="import-card" class="card hidden">
+    <h2>Import Edge bookmarks</h2>
+    <p class="muted">One-time import of your browser bookmarks. Folders become categories. Bookmarks that already exist (same URL) are skipped. Your Edge bookmarks are not changed.</p>
+    <button id="import">Import now</button>
+    <div id="import-result" class="muted"></div>
+  </section>
+
+  <section class="card">
+    <h2>Keyboard shortcut</h2>
+    <p>Quick add is <strong>Alt+Shift+B</strong> by default. Change it at <code>edge://extensions/shortcuts</code>.</p>
+  </section>
+</main>
+<script type="module" src="options.js"></script>
+</body>
+</html>

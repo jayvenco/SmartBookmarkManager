@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Bookmark Manager</title>
+<link rel="stylesheet" href="../lib/ui.css">
+<link rel="stylesheet" href="manager.css">
+</head>
+<body>
+<header>
+  <strong class="brand">Bookmarks</strong>
+  <input id="search" type="search" placeholder="Search name, URL, notes, tags…  ( / )" autocomplete="off">
+  <select id="sort" aria-label="Sort">
+    <option value="recent">Recently added</option>
+    <option value="title">Name</option>
+    <option value="used">Most used</option>
+    <option value="opened">Recently opened</option>
+  </select>
+  <span id="sync-status" class="muted"></span>
+  <button id="sync" class="ghost">Sync</button>
+  <button id="options" class="ghost">Settings</button>
+</header>
+
+<div class="layout">
+  <aside>
+    <nav id="smart"></nav>
+    <div class="side-head"><span>Categories</span><button id="add-collection" class="link" title="New category">+</button></div>
+    <nav id="collections"></nav>
+    <div class="side-head"><span>Tags</span><button id="clear-tags" class="link hidden">clear</button></div>
+    <nav id="tags"></nav>
+  </aside>
+  <main>
+    <div id="summary" class="muted"></div>
+    <ul id="list"></ul>
+    <div id="empty" class="muted hidden"></div>
+  </main>
+</div>
+
+<dialog id="edit">
+  <form id="edit-form" method="dialog">
+    <h3 id="edit-title">Edit bookmark</h3>
+    <label>Name <input id="e-title" required></label>
+    <label>URL <input id="e-url" type="url" required></label>
+    <label>Tags <div id="e-tags" class="chips"></div></label>
+    <label>Category <select id="e-collection"></select></label>
+    <label>Status
+      <select id="e-status">
+        <option value="unread">Unread</option>
+        <option value="read">Read</option>
+        <option value="archived">Archived</option>
+        <option value="dead">Dead link</option>
+      </select>
+    </label>
+    <label>Notes <textarea id="e-notes" rows="3"></textarea></label>
+    <label id="e-global-row" class="inline hidden"><input id="e-global" type="checkbox"> Global: visible to all users</label>
+    <div id="e-error" class="error"></div>
+    <div class="actions">
+      <button type="submit" value="save" id="e-save">Save</button>
+      <button type="button" id="e-delete" class="danger">Delete</button>
+      <button type="button" id="e-cancel" class="ghost">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="coll-dialog">
+  <form id="coll-form" method="dialog">
+    <h3 id="coll-title">New category</h3>
+    <label>Name <input id="c-name" required></label>
+    <label>Parent <select id="c-parent"></select></label>
+    <label id="c-global-row" class="inline hidden"><input id="c-global" type="checkbox"> Global: visible to all users</label>
+    <div class="actions">
+      <button type="submit" id="c-save">Save</button>
+      <button type="button" id="c-delete" class="danger hidden">Delete</button>
+      <button type="button" id="c-cancel" class="ghost">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="manager.js"></script>
+</body>
+</html>

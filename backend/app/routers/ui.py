@@ -1,0 +1,228 @@
+"""Cookie-only endpoints for the web UI: login, users, tokens, server settings."""
+
+import re
+import time
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from ..db import get_db
+from ..deps import COOKIE_NAME, ui_admin, ui_user, ui_user_allow_change
+from ..models import Bookmark, Collection, Meta, Token, Usage, User
+from ..schemas import ChangePasswordIn, LoginIn
+from ..security import SESSION_TTL, hash_password, hash_token, new_token, sign_session, verify_password
+from ..services.search import unindex_bookmark
+from ..services.sync import next_rev
+from .api import _fail, _throttle, user_info
+
+router = APIRouter(prefix="/ui")
+
+USERNAME_RE = re.compile(r"^[a-z0-9._-]{2,64}$")
+
+
+def _set_cookie(response: Response, request: Request, user: User) -> None:
+    secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+    response.set_cookie(
+        COOKIE_NAME, sign_session(user.id), max_age=SESSION_TTL, httponly=True, samesite="strict", secure=secure
+    )
+
+
+def _allow_registration(db: Session) -> bool:
+    row = db.get(Meta, "allow_registration")
+    return bool(row and row.value == "1")
+
+
+@router.get("/public")
+def public(db: Session = Depends(get_db)):
+    return {"allow_registration": _allow_registration(db)}
+
+
+@router.post("/login")
+def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    key = f"{request.client.host if request.client else '?'}:{body.username.lower()}"
+    _throttle(key)
+    user = db.query(User).filter(User.username == body.username.strip().lower()).first()
+    if not user or not verify_password(body.password, user.password_hash):
+        _fail(key)
+        raise HTTPException(401, "invalid_credentials")
+    _set_cookie(response, request, user)
+    return user_info(user)
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(COOKIE_NAME)
+    return {"ok": True}
+
+
+@router.get("/me")
+def me(user: User = Depends(ui_user_allow_change)):
+    return user_info(user)
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordIn, user: User = Depends(ui_user_allow_change), db: Session = Depends(get_db)
+):
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(400, "wrong_password")
+    if body.new_password == body.current_password or body.new_password.lower() == "admin":
+        raise HTTPException(400, "weak_password")
+    user.password_hash = hash_password(body.new_password)
+    user.must_change_password = False
+    db.commit()
+    return {"ok": True}
+
+
+class RegisterIn(BaseModel):
+    username: str = Field(min_length=2, max_length=64)
+    password: str = Field(min_length=8, max_length=256)
+
+
+@router.post("/register")
+def register(body: RegisterIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    if not _allow_registration(db):
+        raise HTTPException(403, "registration_disabled")
+    user = _create_user(db, body.username, body.password, "user", False)
+    _set_cookie(response, request, user)
+    return user_info(user)
+
+
+def _create_user(db: Session, username: str, password: str, role: str, must_change: bool) -> User:
+    username = username.strip().lower()
+    if not USERNAME_RE.match(username):
+        raise HTTPException(400, "invalid_username")
+    if db.query(User).filter(User.username == username).first():
+        raise HTTPException(409, "username_taken")
+    user = User(
+        username=username,
+        password_hash=hash_password(password),
+        role=role,
+        must_change_password=must_change,
+        settings={},
+        created_at=int(time.time() * 1000),
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+# --- tokens (own) ---------------------------------------------------------
+
+class TokenIn(BaseModel):
+    name: str = Field(default="", max_length=100)
+
+
+@router.get("/tokens")
+def list_tokens(user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    rows = db.query(Token).filter(Token.user_id == user.id).order_by(Token.created_at.desc()).all()
+    return [{"id": t.id, "name": t.name, "created_at": t.created_at, "last_used_at": t.last_used_at} for t in rows]
+
+
+@router.post("/tokens")
+def create_token(body: TokenIn, user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    token = new_token()
+    db.add(Token(user_id=user.id, name=body.name or "token", token_hash=hash_token(token), created_at=int(time.time() * 1000)))
+    db.commit()
+    return {"token": token}  # shown once
+
+
+@router.delete("/tokens/{token_id}")
+def delete_token(token_id: int, user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    t = db.get(Token, token_id)
+    if not t or t.user_id != user.id:
+        raise HTTPException(404, "not_found")
+    db.delete(t)
+    db.commit()
+    return {"ok": True}
+
+
+# --- admin: users and server settings --------------------------------------
+
+class UserCreateIn(BaseModel):
+    username: str = Field(min_length=2, max_length=64)
+    password: str = Field(min_length=8, max_length=256)
+    role: str = Field(default="user", pattern="^(admin|user)$")
+
+
+class UserPatchIn(BaseModel):
+    role: str | None = Field(default=None, pattern="^(admin|user)$")
+    password: str | None = Field(default=None, min_length=8, max_length=256)
+
+
+@router.get("/users")
+def list_users(_: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    return [
+        {"id": u.id, "username": u.username, "role": u.role, "created_at": u.created_at}
+        for u in db.query(User).order_by(User.username)
+    ]
+
+
+@router.post("/users")
+def create_user(body: UserCreateIn, _: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    u = _create_user(db, body.username, body.password, body.role, must_change=True)
+    return {"id": u.id, "username": u.username, "role": u.role}
+
+
+@router.patch("/users/{user_id}")
+def patch_user(user_id: int, body: UserPatchIn, admin: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    u = db.get(User, user_id)
+    if not u:
+        raise HTTPException(404, "not_found")
+    if body.role is not None:
+        if u.id == admin.id and body.role != "admin":
+            raise HTTPException(400, "cannot_demote_self")
+        u.role = body.role
+    if body.password is not None:
+        u.password_hash = hash_password(body.password)
+        u.must_change_password = True
+        db.query(Token).filter(Token.user_id == u.id).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, admin: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    u = db.get(User, user_id)
+    if not u:
+        raise HTTPException(404, "not_found")
+    if u.id == admin.id:
+        raise HTTPException(400, "cannot_delete_self")
+    # Global content stays available: hand it to the acting admin and bump the
+    # revision so every client picks up the change.
+    rev = next_rev(db)
+    for model in (Bookmark, Collection):
+        for row in db.scalars(select(model).where(model.owner_id == u.id, model.scope == "global")):
+            row.owner_id = admin.id
+            row.rev = rev
+    for bid in db.scalars(select(Bookmark.id).where(Bookmark.owner_id == u.id)):
+        unindex_bookmark(db, bid)
+    db.execute(delete(Bookmark).where(Bookmark.owner_id == u.id))
+    db.execute(delete(Collection).where(Collection.owner_id == u.id))
+    db.execute(delete(Usage).where(Usage.user_id == u.id))
+    db.execute(delete(Token).where(Token.user_id == u.id))
+    db.delete(u)
+    db.commit()
+    return {"ok": True}
+
+
+class ServerSettingsIn(BaseModel):
+    allow_registration: bool
+
+
+@router.get("/server-settings")
+def get_server_settings(_: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    return {"allow_registration": _allow_registration(db)}
+
+
+@router.put("/server-settings")
+def put_server_settings(body: ServerSettingsIn, _: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    row = db.get(Meta, "allow_registration")
+    if row is None:
+        row = Meta(key="allow_registration")
+        db.add(row)
+    row.value = "1" if body.allow_registration else "0"
+    db.commit()
+    return {"allow_registration": body.allow_registration}
