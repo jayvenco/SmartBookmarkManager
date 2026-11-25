@@ -3,9 +3,15 @@
 from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 
-from ..models import Bookmark, Collection, Usage, User
-from ..schemas import BookmarkIn, CollectionIn, SyncIn, UsageIn
+from ..models import Board, Bookmark, Collection, Usage, User
+from ..schemas import SyncIn, UsageIn
 from .search import index_bookmark
+
+# Fields a client may set. Only fields the client actually sent are applied, so an older
+# client that does not know a field never wipes it.
+BOOKMARK_FIELDS = ("url", "title", "description", "notes", "favicon", "image", "collection_id", "status", "tags", "starred", "pinned", "boards")
+COLLECTION_FIELDS = ("name", "parent_id")
+BOARD_FIELDS = ("name", "emoji", "color")
 
 
 def current_rev(db: Session) -> int:
@@ -24,59 +30,31 @@ def _can_edit(user: User, existing_owner: int, existing_scope: str) -> bool:
     return existing_owner == user.id or (existing_scope == "global" and user.role == "admin")
 
 
-def _upsert_bookmark(db: Session, user: User, inc: BookmarkIn, rev: int) -> str:
-    ex = db.get(Bookmark, inc.id)
+def _upsert(db: Session, user: User, model, inc, fields: tuple, rev: int):
+    """Returns (status, row). status: ok | stale | forbidden | forbidden_global."""
+    ex = db.get(model, inc.id)
     if ex is None:
         if inc.scope == "global" and user.role != "admin":
-            return "forbidden_global"
-        ex = Bookmark(id=inc.id, owner_id=user.id, scope=inc.scope)
+            return "forbidden_global", None
+        ex = model(id=inc.id, owner_id=user.id, scope=inc.scope)
         db.add(ex)
     else:
         if not _can_edit(user, ex.owner_id, ex.scope):
-            return "forbidden"
+            return "forbidden", None
         if inc.updated_at <= ex.updated_at:
-            return "stale"
+            return "stale", ex
         # Only the owner may change the scope, and only admins may publish.
         if ex.owner_id == user.id and (inc.scope == "private" or user.role == "admin"):
             ex.scope = inc.scope
-    ex.url = inc.url
-    ex.title = inc.title
-    ex.description = inc.description
-    ex.notes = inc.notes
-    ex.favicon = inc.favicon
-    ex.collection_id = inc.collection_id
-    ex.status = inc.status
-    ex.tags = inc.tags
+    given = inc.model_fields_set
+    for f in fields:
+        if f in given:
+            setattr(ex, f, getattr(inc, f))
     ex.created_at = ex.created_at or inc.created_at
     ex.updated_at = inc.updated_at
     ex.deleted = inc.deleted
     ex.rev = rev
-    db.flush()
-    index_bookmark(db, ex)
-    return "ok"
-
-
-def _upsert_collection(db: Session, user: User, inc: CollectionIn, rev: int) -> str:
-    ex = db.get(Collection, inc.id)
-    if ex is None:
-        if inc.scope == "global" and user.role != "admin":
-            return "forbidden_global"
-        ex = Collection(id=inc.id, owner_id=user.id, scope=inc.scope)
-        db.add(ex)
-    else:
-        if not _can_edit(user, ex.owner_id, ex.scope):
-            return "forbidden"
-        if inc.updated_at <= ex.updated_at:
-            return "stale"
-        if ex.owner_id == user.id and (inc.scope == "private" or user.role == "admin"):
-            ex.scope = inc.scope
-    ex.name = inc.name
-    ex.parent_id = inc.parent_id
-    ex.created_at = ex.created_at or inc.created_at
-    ex.updated_at = inc.updated_at
-    ex.deleted = inc.deleted
-    ex.rev = rev
-    return "ok"
+    return "ok", ex
 
 
 def _apply_usage(db: Session, user: User, inc: UsageIn, rev: int) -> bool:
@@ -103,9 +81,13 @@ def serialize_bookmark(b: Bookmark) -> dict:
         "description": b.description,
         "notes": b.notes,
         "favicon": b.favicon,
+        "image": b.image or "",
         "collection_id": b.collection_id,
         "status": b.status,
         "tags": b.tags or [],
+        "starred": bool(b.starred),
+        "pinned": bool(b.pinned),
+        "boards": b.boards or [],
         "created_at": b.created_at,
         "updated_at": b.updated_at,
         "deleted": b.deleted,
@@ -127,11 +109,24 @@ def serialize_collection(c: Collection) -> dict:
     }
 
 
+def serialize_board(b: Board) -> dict:
+    return {
+        "id": b.id,
+        "owner_id": b.owner_id,
+        "scope": b.scope,
+        "name": b.name,
+        "emoji": b.emoji or "",
+        "color": b.color or "",
+        "created_at": b.created_at,
+        "updated_at": b.updated_at,
+        "deleted": b.deleted,
+        "rev": b.rev,
+    }
+
+
 def sync(db: Session, user: User, payload: SyncIn) -> dict:
     rejected: list[dict] = []
-    touched_b: set[str] = set()
-    touched_c: set[str] = set()
-    touched_u: set[str] = set()
+    touched = {"bookmark": set(), "collection": set(), "board": set(), "usage": set()}
     rev = None
 
     def alloc() -> int:
@@ -140,57 +135,51 @@ def sync(db: Session, user: User, payload: SyncIn) -> dict:
             rev = next_rev(db)
         return rev
 
-    for inc in payload.collections:
-        res = _upsert_collection(db, user, inc, rev or alloc())
-        touched_c.add(inc.id)
-        if res not in ("ok", "stale"):
-            rejected.append({"type": "collection", "id": inc.id, "reason": res})
-    for inc in payload.bookmarks:
-        res = _upsert_bookmark(db, user, inc, rev or alloc())
-        touched_b.add(inc.id)
-        if res not in ("ok", "stale"):
-            rejected.append({"type": "bookmark", "id": inc.id, "reason": res})
+    plan = (
+        ("collection", Collection, COLLECTION_FIELDS, payload.collections),
+        ("board", Board, BOARD_FIELDS, payload.boards),
+        ("bookmark", Bookmark, BOOKMARK_FIELDS, payload.bookmarks),
+    )
+    for kind, model, fields, items in plan:
+        for inc in items:
+            status, row = _upsert(db, user, model, inc, fields, rev or alloc())
+            touched[kind].add(inc.id)
+            if status not in ("ok", "stale"):
+                rejected.append({"type": kind, "id": inc.id, "reason": status})
+            elif status == "ok" and kind == "bookmark":
+                db.flush()
+                index_bookmark(db, row)
     for inc in payload.usage:
         if inc.opens > 0 and _apply_usage(db, user, inc, rev or alloc()):
-            touched_u.add(inc.bookmark_id)
+            touched["usage"].add(inc.bookmark_id)
     db.commit()
 
-    return pull(db, user, payload.since, touched_b, touched_c, touched_u, rejected)
+    return pull(db, user, payload.since, touched, rejected)
 
 
-def pull(
-    db: Session,
-    user: User,
-    since: int,
-    extra_b: set[str] = frozenset(),
-    extra_c: set[str] = frozenset(),
-    extra_u: set[str] = frozenset(),
-    rejected: list[dict] | None = None,
-) -> dict:
+def pull(db: Session, user: User, since: int, touched: dict | None = None, rejected: list[dict] | None = None) -> dict:
+    touched = touched or {}
     # Read the cursor first: anything committed later gets a higher rev and is
     # picked up by the next pull.
     cur = current_rev(db)
-    bvis = or_(Bookmark.owner_id == user.id, Bookmark.scope == "global")
-    cvis = or_(Collection.owner_id == user.id, Collection.scope == "global")
 
-    b_cond = (Bookmark.rev > since) & (Bookmark.rev <= cur)
-    if extra_b:
-        b_cond = b_cond | Bookmark.id.in_(extra_b)
-    c_cond = (Collection.rev > since) & (Collection.rev <= cur)
-    if extra_c:
-        c_cond = c_cond | Collection.id.in_(extra_c)
-    u_cond = (Usage.rev > since) & (Usage.rev <= cur)
-    if extra_u:
-        u_cond = u_cond | Usage.bookmark_id.in_(extra_u)
+    def select_rows(model, key, id_col):
+        cond = (model.rev > since) & (model.rev <= cur)
+        if touched.get(key):
+            cond = cond | id_col.in_(touched[key])
+        return cond
 
-    bookmarks = db.scalars(select(Bookmark).where(bvis, b_cond)).all()
-    collections = db.scalars(select(Collection).where(cvis, c_cond)).all()
-    usage = db.scalars(select(Usage).where(Usage.user_id == user.id, u_cond)).all()
+    visible = lambda m: or_(m.owner_id == user.id, m.scope == "global")  # noqa: E731
+    bookmarks = db.scalars(select(Bookmark).where(visible(Bookmark), select_rows(Bookmark, "bookmark", Bookmark.id))).all()
+    collections = db.scalars(select(Collection).where(visible(Collection), select_rows(Collection, "collection", Collection.id))).all()
+    boards = db.scalars(select(Board).where(visible(Board), select_rows(Board, "board", Board.id))).all()
+    usage = db.scalars(select(Usage).where(Usage.user_id == user.id, select_rows(Usage, "usage", Usage.bookmark_id))).all()
 
     return {
         "rev": cur,
         "bookmarks": [serialize_bookmark(b) for b in bookmarks],
         "collections": [serialize_collection(c) for c in collections],
+        "boards": [serialize_board(b) for b in boards],
         "usage": [
             {"bookmark_id": u.bookmark_id, "open_count": u.open_count, "last_opened_at": u.last_opened_at}
             for u in usage

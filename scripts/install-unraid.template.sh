@@ -6,6 +6,7 @@
 # - Source code is unpacked to <appdata>/src, your data lives in <appdata>/data and is never touched.
 # - Running it again = update (rebuild + replace the container).
 # - Overrides: HOST_PORT=9000 APPDATA=/mnt/cache/appdata/SmartBM CONTAINER_NAME=SmartBM PUID=99 PGID=100
+#   SBM_FETCH_ALLOW_PRIVATE=1 lets the server read page details of links on your own network.
 set -euo pipefail
 
 NAME="${CONTAINER_NAME:-SmartBM}"
@@ -22,10 +23,17 @@ log() { printf '==> %s\n' "$*"; }
 command -v docker >/dev/null 2>&1 || { echo "Docker not found. Run this on the Unraid server." >&2; exit 1; }
 command -v base64 >/dev/null 2>&1 || { echo "base64 not found." >&2; exit 1; }
 
-# Keep the port of an existing container on update.
+# Keep the port and optional settings of an existing container on update.
 OLD_PORT=""
 if docker inspect "${NAME}" >/dev/null 2>&1; then
   OLD_PORT="$(docker inspect -f '{{with index .HostConfig.PortBindings "7774/tcp"}}{{(index . 0).HostPort}}{{end}}' "${NAME}" 2>/dev/null || true)"
+  if [ -z "${SBM_FETCH_ALLOW_PRIVATE:-}" ]; then
+    SBM_FETCH_ALLOW_PRIVATE="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "${NAME}" 2>/dev/null | sed -n 's/^SBM_FETCH_ALLOW_PRIVATE=//p' | head -n 1)"
+  fi
+fi
+ENV_ARGS=()
+if [ -n "${SBM_FETCH_ALLOW_PRIVATE:-}" ]; then
+  ENV_ARGS+=(-e "SBM_FETCH_ALLOW_PRIVATE=${SBM_FETCH_ALLOW_PRIVATE}")
 fi
 
 # Ask which port to use (skipped when HOST_PORT is set or when not run in a terminal).
@@ -72,6 +80,7 @@ docker run -d \
   --user "${PUID}:${PGID}" \
   -p "${HOST_PORT}:${CONTAINER_PORT}" \
   -v "${APPDATA}/data:/app/data" \
+  ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} \
   --label "net.unraid.docker.managed=dockerman" \
   --label "net.unraid.docker.webui=http://[IP]:[PORT:${CONTAINER_PORT}]/" \
   "${IMAGE}" >/dev/null

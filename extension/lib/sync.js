@@ -3,7 +3,7 @@ import { getConfig, setConfig } from "./config.js";
 import { del, get, getAll, put, putMany } from "./db.js";
 
 // Fields the server accepts (everything else is local bookkeeping).
-const B_FIELDS = ["id", "url", "title", "description", "notes", "favicon", "collection_id", "status", "tags", "scope", "created_at", "updated_at", "deleted"];
+const B_FIELDS = ["id", "url", "title", "description", "notes", "favicon", "image", "collection_id", "status", "tags", "starred", "pinned", "boards", "scope", "created_at", "updated_at", "deleted"];
 const C_FIELDS = ["id", "name", "parent_id", "scope", "created_at", "updated_at", "deleted"];
 const pick = (obj, fields) => Object.fromEntries(fields.map((f) => [f, obj[f] ?? (f === "tags" ? [] : f === "deleted" ? false : undefined)]));
 

@@ -1,0 +1,89 @@
+/* Four themes. Every colour in the app comes from these tokens. */
+:root,
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #0b0f17;
+  --bg-image: radial-gradient(1100px 560px at 8% -12%, rgba(59, 130, 246, .20), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(168, 85, 247, .13), transparent 60%);
+  --panel: rgba(17, 23, 36, .78);
+  --card: rgba(26, 34, 52, .70);
+  --card-hover: rgba(35, 46, 70, .85);
+  --input: rgba(10, 14, 22, .55);
+  --border: rgba(148, 163, 184, .16);
+  --text: #e7ebf3;
+  --muted: #8b96ab;
+  --accent: #3b82f6;
+  --accent-text: #fff;
+  --accent-soft: rgba(59, 130, 246, .17);
+  --danger: #f87171;
+  --star: #fbbf24;
+  --ok: #34d399;
+  --tag-bg-l: 52%;
+  --tag-fg-l: 74%;
+  --shadow: 0 10px 34px rgba(0, 0, 0, .40);
+}
+
+[data-theme="daylight"] {
+  color-scheme: light;
+  --bg: #eef1f6;
+  --bg-image: radial-gradient(1000px 500px at 0% -10%, rgba(59, 130, 246, .13), transparent 60%);
+  --panel: rgba(255, 255, 255, .80);
+  --card: rgba(255, 255, 255, .95);
+  --card-hover: #fff;
+  --input: rgba(244, 246, 250, .95);
+  --border: rgba(30, 41, 59, .13);
+  --text: #19202e;
+  --muted: #627088;
+  --accent: #2563eb;
+  --accent-text: #fff;
+  --accent-soft: rgba(37, 99, 235, .11);
+  --danger: #dc2626;
+  --star: #f59e0b;
+  --ok: #059669;
+  --tag-bg-l: 48%;
+  --tag-fg-l: 34%;
+  --shadow: 0 8px 26px rgba(30, 41, 59, .12);
+}
+
+[data-theme="ocean"] {
+  color-scheme: dark;
+  --bg: #07161c;
+  --bg-image: radial-gradient(1000px 520px at 90% -10%, rgba(20, 184, 166, .20), transparent 60%), radial-gradient(800px 500px at 0% 0%, rgba(14, 116, 144, .25), transparent 60%);
+  --panel: rgba(9, 32, 40, .78);
+  --card: rgba(14, 46, 58, .68);
+  --card-hover: rgba(19, 61, 76, .85);
+  --input: rgba(5, 20, 26, .6);
+  --border: rgba(125, 211, 252, .16);
+  --text: #e2f3f6;
+  --muted: #7fa3ad;
+  --accent: #14b8a6;
+  --accent-text: #032a26;
+  --accent-soft: rgba(20, 184, 166, .18);
+  --danger: #fb7185;
+  --star: #fcd34d;
+  --ok: #4ade80;
+  --tag-bg-l: 50%;
+  --tag-fg-l: 74%;
+  --shadow: 0 10px 34px rgba(0, 0, 0, .42);
+}
+
+[data-theme="graphite"] {
+  color-scheme: dark;
+  --bg: #161616;
+  --bg-image: none;
+  --panel: rgba(28, 28, 30, .92);
+  --card: rgba(40, 40, 43, .90);
+  --card-hover: rgba(52, 52, 56, .95);
+  --input: rgba(18, 18, 20, .8);
+  --border: rgba(255, 255, 255, .10);
+  --text: #ececee;
+  --muted: #9a9aa2;
+  --accent: #f59e0b;
+  --accent-text: #1a1203;
+  --accent-soft: rgba(245, 158, 11, .16);
+  --danger: #f87171;
+  --star: #fbbf24;
+  --ok: #4ade80;
+  --tag-bg-l: 52%;
+  --tag-fg-l: 74%;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+}

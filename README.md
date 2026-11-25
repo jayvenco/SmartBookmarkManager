@@ -2,7 +2,17 @@
 
 Self-hosted bookmark manager: an Edge (Chromium, Manifest V3) extension plus a small Docker backend. Tag, group and search your bookmarks, share selected bookmarks with all users, and sync between browsers through your own server. See [PLAN.md](PLAN.md) for the roadmap.
 
-## Status: phase 1 (MVP)
+## Status: phase 1 (MVP) + web app
+
+**Web app** (open `http://<server>:7774/`, no extension needed):
+
+- Three-column library: categories tree, collections, tags, cards or list, detail panel with notes, read status, preview and usage.
+- `Ctrl/Cmd+K` Spotlight: search everything, or paste a URL to save it. Page title, description, image and icon are fetched by the server.
+- Star, pin, bulk select (`Shift`/`Ctrl` click), move, delete, drag bookmarks onto categories and collections, import (HTML, JSON, CSV) and JSON export.
+- Four themes (Midnight, Daylight, Ocean, Graphite).
+- Same data and sync engine as the extension, so both always show the same library.
+
+**Extension and server:**
 
 - Quick add from the browser: shortcut (`Alt+Shift+B`) or context menu. Set your own name, tags and category; Enter saves.
 - Manager page: search, categories (nested), tag filters, sorting, edit, bulk-free simple UI.
@@ -11,7 +21,11 @@ Self-hosted bookmark manager: an Edge (Chromium, Manifest V3) extension plus a s
 - Usage tracking per user (`open count`, `last opened`) is recorded from day one; the dashboard follows in phase 2.
 - One-time import of the Edge bookmarks.
 
-Not yet built: filter facets and saved filters, usage dashboard, AI features (see PLAN.md).
+Not yet built: usage dashboard, AI features (summaries, tag suggestions, semantic search, duplicates, link health), knowledge graph, insights report (see PLAN.md).
+
+### Page details and private addresses
+
+The server fetches page details itself and refuses private, loopback and link-local addresses (SSRF protection). To also get details for links to services on your own network, set `SBM_FETCH_ALLOW_PRIVATE=1` on the container (on Unraid: `SBM_FETCH_ALLOW_PRIVATE=1` in front of the install command; it is kept on updates).
 
 ## Run the server
 

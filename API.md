@@ -25,19 +25,29 @@ Managing users, tokens, server settings and backups is cookie-only (web UI, `/ui
 {
   "since": 0,
   "bookmarks":   [{"id": "uuid", "url": "https://…", "title": "", "description": "", "notes": "", "favicon": "",
-                   "collection_id": null, "status": "unread|read|archived|dead", "tags": ["a"],
+                   "image": "", "collection_id": null, "status": "unread|reading|read|archived|dead", "tags": ["a"],
+                   "starred": false, "pinned": false, "boards": ["board-id"],
                    "scope": "private|global", "created_at": 0, "updated_at": 0, "deleted": false}],
   "collections": [{"id": "uuid", "name": "", "parent_id": null, "scope": "private", "created_at": 0, "updated_at": 0, "deleted": false}],
+  "boards":      [{"id": "uuid", "name": "", "emoji": "", "color": "#3b82f6", "scope": "private", "created_at": 0, "updated_at": 0, "deleted": false}],
   "usage":       [{"bookmark_id": "uuid", "opens": 2, "last_opened_at": 0}]
 }
 ```
 
 Timestamps are milliseconds since the epoch. Ids are client-generated (UUID).
 
-Response: `{rev, bookmarks, collections, usage, rejected}`. Store `rev` and send it as `since` next time.
+Response: `{rev, bookmarks, collections, boards, usage, rejected}`. Store `rev` and send it as `since` next time.
 
 - **Conflicts:** the record with the higher `updated_at` wins. A stale push is ignored and the server's version is returned.
 - **Deletes** are tombstones (`deleted: true`) and are returned to other clients.
 - **Usage** is sent as increments (`opens` is added to the server total; `last_opened_at` is a max). The response holds absolute totals (`open_count`).
 - **Visibility:** a user sees their own records plus all `scope: "global"` records. Only admins can create global records; only the owner (or an admin, for global records) can edit. Refused changes are listed in `rejected` as `{type, id, reason}`.
 - Tags are lowercased and de-duplicated by the server. Allowed URL schemes: http, https, ftp, file, edge, chrome.
+
+## Naming
+
+`collections` in this API is the **category tree** (`parent_id`, shown as "Categories" in the UI). `boards` are cross-cutting groups with an emoji and colour (shown as "Collections" in the UI); a bookmark lists the boards it belongs to in `boards`.
+
+Only fields present in a pushed record are applied, so a client that does not know a field never overwrites it.
+
+The web app uses the same engine through cookie-authenticated `GET/POST /ui/sync` (not for scripts; use the Bearer endpoints above).

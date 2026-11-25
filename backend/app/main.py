@@ -10,6 +10,7 @@ from . import __version__
 from .db import Base, SessionLocal, engine
 from .deps import COOKIE_NAME
 from .models import Meta, User
+from .migrate import migrate
 from .routers import api, ui
 from .security import hash_password
 from .services.search import FTS_DDL
@@ -18,13 +19,14 @@ STATIC = Path(__file__).parent / "static"
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 CSP = (
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https: http:; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 )
 
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    migrate(engine)
     with engine.begin() as conn:
         conn.exec_driver_sql(FTS_DDL)
     with SessionLocal() as db:
@@ -79,7 +81,12 @@ def healthz():
 
 @app.get("/", include_in_schema=False)
 def index():
-    return FileResponse(STATIC / "index.html")
+    return FileResponse(STATIC / "web" / "index.html")
+
+
+@app.get("/account", include_in_schema=False)
+def account():
+    return FileResponse(STATIC / "account.html")
 
 
 app.include_router(api.router)

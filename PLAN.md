@@ -79,6 +79,8 @@ Features (all optional, off by default, content fetched server-side):
 - Multi-select with bulk actions (tag, move, archive, delete), drag-and-drop into collections, undo.
 
 ## Phases
+
+**Status:** phase 1 and the web app ("phase A": three-column UI, Spotlight, themes, star/pin, collections, import/export) are built. Remaining from the Linkit-style roadmap: **B** AI (Claude/local provider, summaries, tag/category suggestions, AI collections, semantic search, duplicate and link-health scans) and **C** knowledge graph, insights report, timeline/tag-cluster views, more themes.
 1. **MVP**: backend (users, tokens, CRUD, sync, FTS search), extension (quick-add popup, shortcut, context menu, manager page), tags, collections, global bookmarks, usage tracking, one-time import of Edge bookmarks.
 2. **Filtering and convenience**: facets, saved filters, bulk actions, usage dashboard (the per-user settings API already exists), hide/copy global bookmarks, export (JSON + HTML), tag colors.
 3. **AI**: provider setup (Claude/local), auto-tag, summary, dead links, duplicates, natural language search.

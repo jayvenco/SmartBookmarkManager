@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -5,8 +6,16 @@ from pydantic import BaseModel, Field, field_validator
 
 ID_PATTERN = r"^[A-Za-z0-9-]{8,64}$"
 ALLOWED_SCHEMES = {"http", "https", "ftp", "file", "edge", "chrome"}
-Status = Literal["unread", "read", "archived", "dead"]
+Status = Literal["unread", "reading", "read", "archived", "dead"]
 Scope = Literal["private", "global"]
+HTTP_SCHEMES = {"http", "https"}
+
+
+def _http_or_empty(v: str) -> str:
+    v = v.strip()
+    if v and urlparse(v).scheme.lower() not in HTTP_SCHEMES:
+        raise ValueError("only http(s) URLs are allowed")
+    return v
 
 
 def _clean_tags(tags: list[str]) -> list[str]:
@@ -29,10 +38,26 @@ class BookmarkIn(BaseModel):
     collection_id: str | None = Field(default=None, pattern=ID_PATTERN)
     status: Status = "unread"
     tags: list[str] = Field(default_factory=list, max_length=200)
+    image: str = Field(default="", max_length=4000)
+    starred: bool = False
+    pinned: bool = False
+    boards: list[str] = Field(default_factory=list, max_length=100)
     scope: Scope = "private"
     created_at: int = 0
     updated_at: int = 0
     deleted: bool = False
+
+    @field_validator("favicon", "image")
+    @classmethod
+    def _images(cls, v: str) -> str:
+        return _http_or_empty(v)
+
+    @field_validator("boards")
+    @classmethod
+    def _boards(cls, v: list[str]) -> list[str]:
+        if any(not re.match(ID_PATTERN, b) for b in v):
+            raise ValueError("invalid board id")
+        return list(dict.fromkeys(v))
 
     @field_validator("url")
     @classmethod
@@ -58,6 +83,17 @@ class CollectionIn(BaseModel):
     deleted: bool = False
 
 
+class BoardIn(BaseModel):
+    id: str = Field(pattern=ID_PATTERN)
+    name: str = Field(min_length=1, max_length=200)
+    emoji: str = Field(default="", max_length=16)
+    color: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
+    scope: Scope = "private"
+    created_at: int = 0
+    updated_at: int = 0
+    deleted: bool = False
+
+
 class UsageIn(BaseModel):
     bookmark_id: str = Field(pattern=ID_PATTERN)
     opens: int = Field(ge=0, le=100000)
@@ -68,6 +104,7 @@ class SyncIn(BaseModel):
     since: int = Field(default=0, ge=0)
     bookmarks: list[BookmarkIn] = Field(default_factory=list, max_length=2000)
     collections: list[CollectionIn] = Field(default_factory=list, max_length=500)
+    boards: list[BoardIn] = Field(default_factory=list, max_length=500)
     usage: list[UsageIn] = Field(default_factory=list, max_length=2000)
 
 

@@ -46,6 +46,23 @@ class Collection(Base):
     rev: Mapped[int] = mapped_column(Integer, index=True, default=0)
 
 
+class Board(Base):
+    """Cross-cutting themed group of bookmarks (UI name: "collection"). `collections` in
+    the API are the category tree."""
+
+    __tablename__ = "boards"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    scope: Mapped[str] = mapped_column(String(8), default="private")
+    name: Mapped[str] = mapped_column(String(200))
+    emoji: Mapped[str] = mapped_column(String(16), default="")
+    color: Mapped[str] = mapped_column(String(16), default="")
+    created_at: Mapped[int] = mapped_column(BigInteger, default=0)
+    updated_at: Mapped[int] = mapped_column(BigInteger, default=0)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    rev: Mapped[int] = mapped_column(Integer, index=True, default=0)
+
+
 class Bookmark(Base):
     __tablename__ = "bookmarks"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -59,6 +76,10 @@ class Bookmark(Base):
     collection_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(12), default="unread")
     tags: Mapped[list] = mapped_column(JSON, default=list)
+    starred: Mapped[bool] = mapped_column(Boolean, default=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    image: Mapped[str] = mapped_column(Text, default="")
+    boards: Mapped[list] = mapped_column(JSON, default=list)  # ids of boards (UI: "collections")
     content_text: Mapped[str] = mapped_column(Text, default="")  # filled by the AI phase
     created_at: Mapped[int] = mapped_column(BigInteger, default=0)
     updated_at: Mapped[int] = mapped_column(BigInteger, default=0)
