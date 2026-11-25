@@ -8,6 +8,7 @@ Phase A: web app.
 - New bookmark fields: `starred`, `pinned`, `image`, status `reading`; new `boards` (shown as "collections" in the UI) that cut across categories.
 - Cookie endpoints for the web app: `GET/POST /ui/sync`, `POST /ui/fetch-meta` (SSRF-protected page details).
 - Sync only applies fields a client actually sent, so older clients never wipe new fields.
+- Docker image published to `ghcr.io/jayvenco/smartbookmarkmanager` by GitHub Actions; Unraid template `unraid/smartbm-template.xml`.
 - Additive database migration for existing installs; extension updated to keep the new fields.
 
 ## 0.1.0 (unreleased)

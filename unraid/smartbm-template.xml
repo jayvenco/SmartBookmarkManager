@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>SmartBM</Name>
+  <Repository>ghcr.io/jayvenco/smartbookmarkmanager:latest</Repository>
+  <Registry>https://github.com/jayvenco/SmartBookmarkManager/pkgs/container/smartbookmarkmanager</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/jayvenco/SmartBookmarkManager</Support>
+  <Project>https://github.com/jayvenco/SmartBookmarkManager</Project>
+  <Overview>Smart Bookmark Manager: self-hosted bookmark library with a web app and sync server for the Edge extension. Default login after first start: admin / admin (you must change it immediately).</Overview>
+  <Category>Tools: Productivity:</Category>
+  <WebUI>http://[IP]:[PORT:7774]/</WebUI>
+  <ExtraParams>--user 99:100</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <Config Name="WebUI port" Target="7774" Default="7774" Mode="tcp" Description="Port for the web app and the extension." Type="Port" Display="always" Required="true" Mask="false">7774</Config>
+  <Config Name="Data (database and secret key)" Target="/app/data" Default="/mnt/user/appdata/SmartBM/data" Mode="rw" Description="SQLite database and the session key. Back this folder up." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/SmartBM/data</Config>
+  <Config Name="Allow private link details" Target="SBM_FETCH_ALLOW_PRIVATE" Default="" Mode="" Description="Set to 1 to let the server read page details of links on your own network." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

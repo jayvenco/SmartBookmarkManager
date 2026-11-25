@@ -48,6 +48,22 @@ SBM_DATA_DIR=./data ./.venv/bin/uvicorn app.main:app --app-dir backend --reload 
 
 ## Install on Unraid
 
+### Option 1: ready-made image (recommended)
+
+GitHub Actions builds the image on every push to `main` and publishes it to `ghcr.io/jayvenco/smartbookmarkmanager`. The package must be set to public once (GitHub > Packages > smartbookmarkmanager > Package settings > Change visibility), otherwise Unraid cannot pull it.
+
+In the Unraid terminal (one command; data goes to `/mnt/user/appdata/SmartBM/data`):
+
+```bash
+mkdir -p /mnt/user/appdata/SmartBM/data && chown 99:100 /mnt/user/appdata/SmartBM/data
+docker run -d --name SmartBM --restart unless-stopped --user 99:100 -p 7774:7774 \
+  -v /mnt/user/appdata/SmartBM/data:/app/data ghcr.io/jayvenco/smartbookmarkmanager:latest
+```
+
+Or use the template: copy `unraid/smartbm-template.xml` to `/boot/config/plugins/dockerMan/templates-user/my-SmartBM.xml`, then Docker tab > *Add Container* > template *SmartBM*. Updates: Docker tab > *Check for updates*.
+
+### Option 2: build on the server (no registry)
+
 The image is built on the Unraid server itself, no registry needed. On your Mac copy the installer to the clipboard:
 
 ```bash
