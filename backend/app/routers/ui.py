@@ -3,7 +3,10 @@
 import re
 import time
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -22,6 +25,7 @@ from .api import _fail, _throttle, user_info
 router = APIRouter(prefix="/ui")
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{2,64}$")
+EXTENSION_ZIP = Path(__file__).resolve().parent.parent / "assets" / "smart-bookmark-extension.zip"
 
 
 def _set_cookie(response: Response, request: Request, user: User) -> None:
@@ -145,6 +149,13 @@ def fetch_meta(body: FetchMetaIn, user: User = Depends(ui_user)):
 
 class TokenIn(BaseModel):
     name: str = Field(default="", max_length=100)
+
+
+@router.get("/extension.zip")
+def download_extension(_: User = Depends(ui_user)):
+    if not EXTENSION_ZIP.is_file():
+        raise HTTPException(404, "extension_not_available")
+    return FileResponse(EXTENSION_ZIP, media_type="application/zip", filename="smart-bookmark-extension.zip")
 
 
 @router.get("/tokens")

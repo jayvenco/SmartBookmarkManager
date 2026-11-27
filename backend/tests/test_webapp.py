@@ -160,3 +160,24 @@ def test_migration_adds_columns_to_old_database():
         row = conn.exec_driver_sql("SELECT starred, pinned, image, boards FROM bookmarks").first()
     assert {"starred", "pinned", "image", "boards"} <= cols
     assert tuple(row) == (0, 0, "", "[]")
+
+
+def test_extension_download(client, admin):
+    import io
+    import zipfile
+    from pathlib import Path
+
+    assert client.get("/ui/extension.zip").status_code == 401
+    cookie_login(client)
+    r = client.get("/ui/extension.zip")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/zip"
+    names = zipfile.ZipFile(io.BytesIO(r.content)).namelist()
+    assert "smart-bookmark-extension/manifest.json" in names
+    # the committed zip must match extension/ (run scripts/build-extension-zip.py after changes)
+    src = Path(__file__).resolve().parents[2] / "extension"
+    expected = sorted("smart-bookmark-extension/" + p.relative_to(src).as_posix() for p in src.rglob("*") if p.is_file() and p.name != ".DS_Store")
+    assert sorted(names) == expected
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    for p in src.rglob("*"):
+        if p.is_file() and p.name != ".DS_Store":
+            assert z.read("smart-bookmark-extension/" + p.relative_to(src).as_posix()) == p.read_bytes(), p

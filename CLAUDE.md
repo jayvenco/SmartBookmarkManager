@@ -23,6 +23,7 @@ Self-hosted bookmark manager: Edge (MV3) extension + FastAPI backend. See `PLAN.
 - Sync is pull/push with a `rev` cursor, last-write-wins; usage is sent as increments. Do not add websockets or CRDTs.
 - The AI key stays on the server. Page fetching must block private IP ranges (SSRF); `SBM_FETCH_ALLOW_PRIVATE=1` is the only opt-out.
 - Native browser bookmarks are imported once; no continuous mirroring.
+- After any change under `extension/` run `python3 scripts/build-extension-zip.py` (the web app serves `backend/app/assets/smart-bookmark-extension.zip`), then rebuild the Unraid installer.
 - Update README, CHANGELOG and `API.md` with every user-visible change.
 - Unraid install: `unraid/*` is generated. After any change under `backend/` (except tests) run `./scripts/build-unraid-installer.sh` and commit the result. The installer must stay free of tabs and `!history` characters (terminal paste).
 

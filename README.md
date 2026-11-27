@@ -76,6 +76,8 @@ Running the same paste again updates the app (rebuild and replace the container,
 
 ## Install the extension (Edge)
 
+Easiest: open the web app, *Settings*, **Download extension**, unzip it, then continue at step 1 and pick the unzipped folder. Maintainers: run `python3 scripts/build-extension-zip.py` after changing `extension/` (a test checks the zip is current).
+
 1. Open `edge://extensions`, enable **Developer mode**, click **Load unpacked** and select the `extension/` folder.
 2. Open the extension **Settings**: enter the server address, username and password. Edge asks for permission to contact that server only.
 3. Optionally click **Import now** to bring in your existing Edge bookmarks.

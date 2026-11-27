@@ -51,3 +51,5 @@ Response: `{rev, bookmarks, collections, boards, usage, rejected}`. Store `rev` 
 Only fields present in a pushed record are applied, so a client that does not know a field never overwrites it.
 
 The web app uses the same engine through cookie-authenticated `GET/POST /ui/sync` (not for scripts; use the Bearer endpoints above).
+
+Cookie-only: `GET /ui/extension.zip` downloads the browser extension (used by the web app's Settings).

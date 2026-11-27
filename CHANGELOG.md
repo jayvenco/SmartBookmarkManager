@@ -9,6 +9,7 @@ Phase A: web app.
 - Cookie endpoints for the web app: `GET/POST /ui/sync`, `POST /ui/fetch-meta` (SSRF-protected page details).
 - Sync only applies fields a client actually sent, so older clients never wipe new fields.
 - Docker image published to `ghcr.io/jayvenco/smartbookmarkmanager` by GitHub Actions; Unraid template `unraid/smartbm-template.xml`.
+- Settings: *Download extension* (`GET /ui/extension.zip`, login required) serves the packed extension.
 - Additive database migration for existing installs; extension updated to keep the new fields.
 
 ## 0.1.0 (unreleased)
