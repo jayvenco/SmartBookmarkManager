@@ -80,7 +80,7 @@ Features (all optional, off by default, content fetched server-side):
 
 ## Phases
 
-**Status:** phase 1 and the web app ("phase A": three-column UI, Spotlight, themes, star/pin, collections, import/export) are built. Remaining from the Linkit-style roadmap: **B** AI (Claude/local provider, summaries, tag/category suggestions, AI collections, semantic search, duplicate and link-health scans) and **C** knowledge graph, insights report, timeline/tag-cluster views, more themes.
+**Status:** phase 1 and the web app ("phase A": three-column UI, Spotlight, themes, star/pin, collections, import/export) are built. Remaining from the Linkit-style roadmap: **B** AI: B1 provider setup + auto-tagging is built; still to come B2 search qualifiers and smart lists, B3 summaries and tag cleanup, B4 semantic search (ideas from Karakeep: AI tags kept apart from own tags, tag normalisation, query qualifiers, embeddings in SQLite) and **C** knowledge graph, insights report, timeline/tag-cluster views, more themes.
 1. **MVP**: backend (users, tokens, CRUD, sync, FTS search), extension (quick-add popup, shortcut, context menu, manager page), tags, collections, global bookmarks, usage tracking, one-time import of Edge bookmarks.
 2. **Filtering and convenience**: facets, saved filters, bulk actions, usage dashboard (the per-user settings API already exists), hide/copy global bookmarks, export (JSON + HTML), tag colors.
 3. **AI**: provider setup (Claude/local), auto-tag, summary, dead links, duplicates, natural language search.

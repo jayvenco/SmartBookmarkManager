@@ -95,6 +95,43 @@ class _Meta(HTMLParser):
             self.title += data
 
 
+class _Text(HTMLParser):
+    """Visible text of a page (scripts, styles and similar are skipped)."""
+
+    SKIP = {"script", "style", "noscript", "svg", "template", "head", "nav", "footer", "form", "iframe"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip = 0
+        self._len = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self._skip += 1
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data):
+        if self._skip or self._len > 60000:
+            return
+        text = " ".join(data.split())
+        if text:
+            self.parts.append(text)
+            self._len += len(text)
+
+
+def parse_text(html: str, limit: int = 20000) -> str:
+    p = _Text()
+    try:
+        p.feed(html)
+    except Exception:
+        pass
+    return " ".join(p.parts)[:limit]
+
+
 def _read_page(url: str) -> tuple[str, str]:
     """Returns (html, final_url). Follows redirects, re-checking every hop."""
     for _ in range(MAX_REDIRECTS + 1):
@@ -162,3 +199,12 @@ def fetch_meta(url: str) -> dict:
         return {"ok": True, "url": final, **parse_meta(html, final)}
     except FetchError as e:
         return {"ok": False, "error": str(e)}
+
+
+def fetch_page(url: str) -> dict:
+    """Like fetch_meta, plus the visible page text (for AI tagging). Never raises."""
+    try:
+        html, final = _read_page(url.strip())
+        return {"ok": True, "url": final, **parse_meta(html, final), "text": parse_text(html)}
+    except FetchError as e:
+        return {"ok": False, "error": str(e), "text": ""}

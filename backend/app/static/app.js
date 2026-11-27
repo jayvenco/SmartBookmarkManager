@@ -136,7 +136,7 @@ function renderForcedChange() {
 
 async function renderHome(me) {
   const blocks = [connectCard(), await tokensCard(), changePasswordCard(() => alert("Password changed."))];
-  if (me.role === "admin") blocks.push(await serverCard(), await usersCard(me));
+  if (me.role === "admin") blocks.push(await serverCard(), await aiCard(), await usersCard(me));
   $app.replaceChildren(...blocks);
 }
 
@@ -193,6 +193,50 @@ async function serverCard() {
     onchange: async () => { await api("PUT", "/server-settings", { allow_registration: box.checked }); },
   });
   return h("section", { class: "card" }, h("h2", {}, "Server settings"), h("label", {}, h("span", {}, box, " Allow self-registration")));
+}
+
+async function aiCard() {
+  const s = await api("GET", "/ai-settings");
+  const field = (label, input, hint) => h("label", { class: "field" }, h("span", {}, label), input, hint ? h("span", { class: "meta" }, hint) : null);
+  const provider = h("select", {}, [["none", "Off"], ["claude", "Claude (Anthropic API)"], ["local", "Local / OpenAI-compatible (Ollama)"]].map(([v, t]) => h("option", { value: v }, t)));
+  provider.value = s.provider;
+  const claudeModel = h("input", { value: s.claude_model });
+  const claudeKey = h("input", { type: "password", autocomplete: "off", placeholder: s.claude_key_set ? "Key is set (leave empty to keep)" : "sk-ant-…" });
+  const localUrl = h("input", { value: s.local_url, placeholder: "http://192.168.1.10:11434/v1" });
+  const localModel = h("input", { value: s.local_model, placeholder: "llama3.1" });
+  const localKey = h("input", { type: "password", autocomplete: "off", placeholder: s.local_key_set ? "Key is set (leave empty to keep)" : "Optional" });
+  const maxChars = h("input", { type: "number", min: "500", max: "30000", value: String(s.max_chars) });
+  const language = h("input", { value: s.language });
+  const timeout = h("input", { type: "number", min: "5", max: "300", value: String(s.timeout) });
+  const out = h("div", { class: "meta" });
+  const save = async (extra = {}) => {
+    const body = {
+      provider: provider.value, claude_model: claudeModel.value, local_url: localUrl.value, local_model: localModel.value,
+      max_chars: Number(maxChars.value), language: language.value, timeout: Number(timeout.value), ...extra,
+    };
+    if (claudeKey.value.trim()) body.claude_key = claudeKey.value.trim();
+    if (localKey.value.trim()) body.local_key = localKey.value.trim();
+    return api("PUT", "/ai-settings", body);
+  };
+  const clearKey = (name) => h("button", { class: "ghost", type: "button", onclick: async () => { await save({ [name]: "" }); boot(); } }, "Remove stored key");
+  return h("section", { class: "card" },
+    h("h2", {}, "AI tagging"),
+    h("p", { class: "meta" }, "Page text is sent to the provider you choose to suggest tags. The key stays on this server. Users switch automatic tagging on for themselves in the web app settings."),
+    field("Provider", provider),
+    field("Claude model", claudeModel), field("Claude API key", claudeKey), s.claude_key_set ? clearKey("claude_key") : null,
+    field("Local server URL (OpenAI-compatible, ending in /v1)", localUrl), field("Local model", localModel), field("Local API key", localKey), s.local_key_set ? clearKey("local_key") : null,
+    field("Page text sent to the model (characters)", maxChars, "Lower = cheaper and faster."),
+    field("Tag language", language), field("Timeout (seconds)", timeout),
+    h("div", { class: "actions" },
+      h("button", { type: "button", onclick: async () => {
+        out.textContent = "Saving…";
+        try { const r = await save(); out.textContent = r.enabled ? "Saved. AI is on." : "Saved. AI is off (provider incomplete or set to Off)."; claudeKey.value = ""; localKey.value = ""; } catch (e) { out.textContent = msg(e); }
+      } }, "Save"),
+      h("button", { class: "ghost", type: "button", onclick: async () => {
+        out.textContent = "Testing…";
+        try { const r = await api("POST", "/ai-test"); out.textContent = r.ok ? `Works. Model answered: ${r.reply}` : `Failed: ${r.error.replace(/_/g, " ")}`; } catch (e) { out.textContent = msg(e); }
+      } }, "Test (save first)")),
+    out);
 }
 
 async function usersCard(me) {

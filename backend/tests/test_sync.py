@@ -110,7 +110,7 @@ def test_settings_roundtrip(client, admin):
     assert client.get("/api/v1/settings", headers=admin).json()["unused_days"] == 90
     r = client.put("/api/v1/settings", headers=admin, json={"unused_days": 30, "auto_archive_unused": True, "top_n": 5})
     assert r.status_code == 200
-    assert client.get("/api/v1/settings", headers=admin).json() == {"unused_days": 30, "auto_archive_unused": True, "top_n": 5}
+    assert client.get("/api/v1/settings", headers=admin).json() == {"unused_days": 30, "auto_archive_unused": True, "top_n": 5, "ai_auto_tag": False}
     assert client.put("/api/v1/settings", headers=admin, json={"unused_days": 0}).status_code == 422
 
 

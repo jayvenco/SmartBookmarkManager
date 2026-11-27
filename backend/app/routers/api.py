@@ -2,7 +2,7 @@
 
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -10,6 +10,7 @@ from ..deps import api_token, api_user, api_user_allow_change
 from ..models import Token, User
 from ..schemas import ChangePasswordIn, LoginIn, SyncIn, UserSettings
 from ..security import hash_password, hash_token, new_token, verify_password
+from ..services import ai
 from ..services import sync as sync_service
 from ..services.search import search_bookmarks
 
@@ -96,8 +97,11 @@ def pull(since: int = Query(default=0, ge=0), user: User = Depends(api_user), db
 
 
 @router.post("/sync")
-def push(body: SyncIn, user: User = Depends(api_user), db: Session = Depends(get_db)):
-    return sync_service.sync(db, user, body)
+def push(body: SyncIn, background: BackgroundTasks, user: User = Depends(api_user), db: Session = Depends(get_db)):
+    created: list[str] = []
+    result = sync_service.sync(db, user, body, created)
+    ai.schedule_auto_tag(background, db, user, created)
+    return result
 
 
 @router.get("/bookmarks")

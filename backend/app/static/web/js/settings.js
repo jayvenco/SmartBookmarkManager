@@ -1,3 +1,4 @@
+import { ai, setAutoTag } from "./ai.js";
 import { api } from "./api.js";
 import { openModal } from "./dialogs.js";
 import { exportJson, openImporter } from "./importer.js";
@@ -28,6 +29,13 @@ export function openSettings({ onLogout }) {
       h("h3", {}, "Settings"),
       h("div", { class: "muted" }, `Signed in as ${state.user.username} (${state.user.role})`),
       h("label", { class: "field" }, "Theme", themeBox),
+      ai.enabled
+        ? h("label", { class: "field" }, "AI",
+            (() => {
+              const box = h("input", { type: "checkbox", checked: ai.autoTag, onchange: async () => { try { await setAutoTag(box.checked); } catch (_) { box.checked = !box.checked; } } });
+              return h("span", {}, box, " Tag new bookmarks automatically (page text is sent to the AI provider)");
+            })())
+        : h("div", { class: "note" }, "AI tagging is off. An admin can set up a provider on the account page."),
       h("div", { class: "modal-actions" },
         h("button", { class: "btn", type: "button", onclick: () => { close(); openImporter(); } }, icon("upload"), "Import"),
         h("button", { class: "btn", type: "button", onclick: exportJson }, icon("download"), "Export JSON")),

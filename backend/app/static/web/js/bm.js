@@ -12,8 +12,8 @@ export function favTile(b, large = false) {
   return tile;
 }
 
-export function tagChip(tag, onclick, active = false) {
-  return h("button", { class: "tag" + (active ? " on" : ""), type: "button", style: { "--h": hueOf(tag) }, onclick }, tag);
+export function tagChip(tag, onclick, active = false, byAi = false) {
+  return h("button", { class: "tag" + (active ? " on" : "") + (byAi ? " ai" : ""), type: "button", title: byAi ? "Added by AI" : undefined, style: { "--h": hueOf(tag) }, onclick }, tag);
 }
 
 /** Opens the page in a new tab and counts the visit. */

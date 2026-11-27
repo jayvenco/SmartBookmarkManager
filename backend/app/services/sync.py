@@ -88,6 +88,7 @@ def serialize_bookmark(b: Bookmark) -> dict:
         "starred": bool(b.starred),
         "pinned": bool(b.pinned),
         "boards": b.boards or [],
+        "ai_tags": b.ai_tags or [],
         "created_at": b.created_at,
         "updated_at": b.updated_at,
         "deleted": b.deleted,
@@ -124,7 +125,8 @@ def serialize_board(b: Board) -> dict:
     }
 
 
-def sync(db: Session, user: User, payload: SyncIn) -> dict:
+def sync(db: Session, user: User, payload: SyncIn, created: list | None = None) -> dict:
+    """`created`, when given, receives the ids of new bookmarks that arrived without tags."""
     rejected: list[dict] = []
     touched = {"bookmark": set(), "collection": set(), "board": set(), "usage": set()}
     rev = None
@@ -142,11 +144,16 @@ def sync(db: Session, user: User, payload: SyncIn) -> dict:
     )
     for kind, model, fields, items in plan:
         for inc in items:
+            is_new = kind == "bookmark" and db.get(Bookmark, inc.id) is None
             status, row = _upsert(db, user, model, inc, fields, rev or alloc())
             touched[kind].add(inc.id)
             if status not in ("ok", "stale"):
                 rejected.append({"type": kind, "id": inc.id, "reason": status})
             elif status == "ok" and kind == "bookmark":
+                if "tags" in inc.model_fields_set:  # AI tags the user removed are no longer AI tags
+                    row.ai_tags = [t for t in (row.ai_tags or []) if t in (row.tags or [])]
+                if created is not None and is_new and not inc.deleted and not inc.tags:
+                    created.append(inc.id)
                 db.flush()
                 index_bookmark(db, row)
     for inc in payload.usage:

@@ -8,7 +8,7 @@ Self-hosted bookmark manager: Edge (MV3) extension + FastAPI backend. See `PLAN.
 - AI: Claude (Anthropic API) by default, optional local OpenAI-compatible provider (Ollama).
 
 ## Layout
-- `backend/app/` — `main.py` (middleware: CSRF, security headers), `routers/` (`api` Bearer v1, `ui` cookie-only), `services/` (`sync`, `search`; `ai` comes in phase 3), `models.py`, `schemas.py`, `deps.py`, `security.py`, `static/` (admin web UI, vanilla JS, no inline scripts/styles)
+- `backend/app/` — `main.py` (middleware: CSRF, security headers), `routers/` (`api` Bearer v1, `ui` cookie-only), `services/` (`sync`, `search`, `fetcher`, `ai`), `models.py`, `schemas.py`, `deps.py`, `security.py`, `static/` (admin web UI, vanilla JS, no inline scripts/styles)
 - Web app: `backend/app/static/web/` (`index.html`, `js/` ES modules: `state.js` data+sync, `view.js` filters, `library.js` cards, `sidebar.js`, `detail.js`, `dialogs.js`, `spotlight.js`, `importer.js`; `css/themes.css` tokens). Admin/token page: `static/account.html`.
 - `extension/` — `manifest.json`, `background/service-worker.js` (sync, context menu), `popup/` (quick add), `manager/` (full page), `options/` (login, import), `lib/` (`db` IndexedDB, `store` data layer, `sync`, `api`, `config`)
 - `backend/tests/`, `backend/Dockerfile`, `docker-compose.yml`, `README.md`, `CHANGELOG.md`, `API.md`

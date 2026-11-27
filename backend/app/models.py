@@ -80,6 +80,7 @@ class Bookmark(Base):
     pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     image: Mapped[str] = mapped_column(Text, default="")
     boards: Mapped[list] = mapped_column(JSON, default=list)  # ids of boards (UI: "collections")
+    ai_tags: Mapped[list] = mapped_column(JSON, default=list)  # subset of `tags` added by the AI (server-managed)
     content_text: Mapped[str] = mapped_column(Text, default="")  # filled by the AI phase
     created_at: Mapped[int] = mapped_column(BigInteger, default=0)
     updated_at: Mapped[int] = mapped_column(BigInteger, default=0)

@@ -1,4 +1,5 @@
 // Centre column: filter toolbar, bulk actions and the bookmark cards.
+import { ai, tagBookmarks } from "./ai.js";
 import { favTile, openBookmark, tagChip } from "./bm.js";
 import { bookmarkDialog, boardDialog, confirmBox, moveDialog } from "./dialogs.js";
 import { openImporter } from "./importer.js";
@@ -88,6 +89,12 @@ function bulkBar(rows) {
     h("span", { class: "grow" }),
     h("button", { class: "btn sm", type: "button", disabled: !editable.length, onclick: async () => { await moveDialog(editable); renderLibrary(); } }, "Move to…"),
     h("button", { class: "btn sm", type: "button", disabled: !n, onclick: async () => { await boardDialog({ ids }); } }, "New collection"),
+    ai.enabled ? h("button", { class: "btn sm", type: "button", disabled: !editable.length, onclick: async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      await tagBookmarks(editable, (done, total) => { btn.textContent = `Tagging ${done + 1}/${total}…`; });
+      renderLibrary();
+    } }, "AI tags") : null,
     view.mode === "board" ? h("button", { class: "btn sm", type: "button", disabled: !editable.length, onclick: () => { removeFromBoard(editable, view.board); view.picked.clear(); } }, "Remove from collection") : null,
     h("button", { class: "btn sm danger", type: "button", disabled: !editable.length, onclick: async () => {
       if (await confirmBox("Delete bookmarks", `${editable.length} bookmark${editable.length === 1 ? "" : "s"} will be deleted.`)) { removeBookmarks(editable); view.picked.clear(); toast("Deleted"); }

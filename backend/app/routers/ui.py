@@ -2,10 +2,11 @@
 
 import re
 import time
+from typing import Literal
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
@@ -16,7 +17,7 @@ from ..deps import COOKIE_NAME, ui_admin, ui_user, ui_user_allow_change
 from ..models import Board, Bookmark, Collection, Meta, Token, Usage, User
 from ..schemas import ChangePasswordIn, LoginIn, SyncIn
 from ..security import SESSION_TTL, hash_password, hash_token, new_token, sign_session, verify_password
-from ..services import fetcher
+from ..services import ai, fetcher
 from ..services import sync as sync_service
 from ..services.search import unindex_bookmark
 from ..services.sync import next_rev
@@ -123,8 +124,11 @@ def web_pull(since: int = 0, user: User = Depends(ui_user), db: Session = Depend
 
 
 @router.post("/sync")
-def web_push(body: SyncIn, user: User = Depends(ui_user), db: Session = Depends(get_db)):
-    return sync_service.sync(db, user, body)
+def web_push(body: SyncIn, background: BackgroundTasks, user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    created: list[str] = []
+    result = sync_service.sync(db, user, body, created)
+    ai.schedule_auto_tag(background, db, user, created)
+    return result
 
 
 class FetchMetaIn(BaseModel):
@@ -270,3 +274,89 @@ def put_server_settings(body: ServerSettingsIn, _: User = Depends(ui_admin), db:
     row.value = "1" if body.allow_registration else "0"
     db.commit()
     return {"allow_registration": body.allow_registration}
+
+
+# --- AI (admin config, per-user opt-in, tagging) ---------------------------
+
+class AISettingsIn(BaseModel):
+    provider: Literal["none", "claude", "local"] = "none"
+    claude_model: str = Field(default="claude-haiku-5-5", max_length=100)
+    claude_key: str | None = Field(default=None, max_length=300)  # None keeps, "" removes
+    local_url: str = Field(default="", max_length=500)
+    local_model: str = Field(default="", max_length=200)
+    local_key: str | None = Field(default=None, max_length=300)
+    max_chars: int = Field(default=6000, ge=500, le=30000)
+    language: str = Field(default="english", min_length=2, max_length=40)
+    timeout: int = Field(default=30, ge=5, le=300)
+
+
+@router.get("/ai-settings")
+def get_ai_settings(_: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    return ai.public_config(ai.load_config(db))
+
+
+@router.put("/ai-settings")
+def put_ai_settings(body: AISettingsIn, _: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    values = body.model_dump(exclude={"claude_key", "local_key"})
+    if values["local_url"] and not ai.valid_local_url(values["local_url"]):
+        raise HTTPException(422, "invalid_local_url")
+    for key in ("claude_key", "local_key"):
+        if getattr(body, key) is not None:
+            values[key] = getattr(body, key).strip()
+    ai.save_config(db, values)
+    return ai.public_config(ai.load_config(db))
+
+
+@router.post("/ai-test")
+def test_ai(_: User = Depends(ui_admin), db: Session = Depends(get_db)):
+    """Tiny round trip so the admin sees whether the key and model work."""
+    try:
+        reply = ai.complete(ai.load_config(db), "Reply with the single word: ok", "ping", max_tokens=10)
+    except ai.AIError as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": True, "reply": reply.strip()[:40]}
+
+
+@router.get("/ai-status")
+def ai_status(user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    cfg = ai.load_config(db)
+    return {"enabled": ai.is_enabled(cfg), "provider": cfg["provider"], "auto_tag": bool((user.settings or {}).get("ai_auto_tag"))}
+
+
+@router.put("/ai-auto-tag")
+def put_auto_tag(body: dict, user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    user.settings = {**(user.settings or {}), "ai_auto_tag": bool(body.get("enabled"))}
+    db.commit()
+    return {"auto_tag": user.settings["ai_auto_tag"]}
+
+
+class AITagIn(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=5)
+
+
+_TAGS: dict[int, list[float]] = {}
+
+
+@router.post("/ai/tag")
+def ai_tag(body: AITagIn, user: User = Depends(ui_user), db: Session = Depends(get_db)):
+    """Tag (or re-tag) bookmarks now. Replaces only tags the AI added before."""
+    cfg = ai.load_config(db)
+    if not ai.is_enabled(cfg):
+        raise HTTPException(409, "ai_not_configured")
+    now = time.time()
+    recent = [t for t in _TAGS.get(user.id, []) if now - t < 60]
+    if len(recent) + len(body.ids) > 30:
+        raise HTTPException(429, "too_many_requests")
+    _TAGS[user.id] = recent + [now] * len(body.ids)
+    results = []
+    for bid in body.ids:
+        bm = db.get(Bookmark, bid)
+        if bm is None or bm.deleted or not (bm.owner_id == user.id or (bm.scope == "global" and user.role == "admin")):
+            results.append({"id": bid, "ok": False, "error": "not_found"})
+            continue
+        try:
+            results.append({"id": bid, "ok": True, "ai_tags": ai.tag_bookmark(db, bm, cfg)})
+        except ai.AIError as e:
+            db.rollback()
+            results.append({"id": bid, "ok": False, "error": str(e)})
+    return {"results": results}

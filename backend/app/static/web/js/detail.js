@@ -1,4 +1,5 @@
 // Right column: everything about the selected bookmark.
+import { ai, tagBookmarks } from "./ai.js";
 import { api } from "./api.js";
 import { favTile, openBookmark, tagChip } from "./bm.js";
 import { bookmarkDialog, confirmBox, moveDialog } from "./dialogs.js";
@@ -38,6 +39,14 @@ export function renderDetail(root) {
     }
   } }, icon("refresh", 13), "Refresh details");
 
+  const aiBtn = ai.enabled && editable ? h("button", { class: "btn sm", type: "button", onclick: async () => {
+    aiBtn.disabled = true;
+    aiBtn.replaceChildren(icon("refresh", 13), "Tagging…");
+    await tagBookmarks([b.id]);
+    aiBtn.disabled = false;
+    aiBtn.replaceChildren(icon("refresh", 13), (b.ai_tags || []).length ? "Re-tag with AI" : "Tag with AI");
+  } }, icon("refresh", 13), (b.ai_tags || []).length ? "Re-tag with AI" : "Tag with AI") : null;
+
   setChildren(root,
     h("div", { class: "detail-head" },
       favTile(b, true),
@@ -59,7 +68,8 @@ export function renderDetail(root) {
     b.image ? h("div", { class: "detail-section" }, h("img", { class: "preview", src: b.image, alt: "", loading: "lazy", referrerpolicy: "no-referrer", onerror: (e) => e.target.remove() })) : null,
     b.description ? h("div", { class: "detail-section" }, h("h4", {}, "Description"), h("div", {}, b.description)) : null,
     h("div", { class: "detail-section" }, h("h4", {}, "Tags"),
-      (b.tags || []).length ? h("div", { class: "card-tags" }, b.tags.map((t) => tagChip(t, () => toggleTag(t), view.tags.has(t)))) : h("span", { class: "muted" }, "No tags")),
+      (b.tags || []).length ? h("div", { class: "card-tags" }, b.tags.map((t) => tagChip(t, () => toggleTag(t), view.tags.has(t), (b.ai_tags || []).includes(t)))) : h("span", { class: "muted" }, "No tags"),
+      aiBtn),
     h("div", { class: "detail-section" }, h("h4", {}, "Organisation"),
       h("dl", { class: "kv" },
         h("dt", {}, "Category"), h("dd", {}, cat ? h("a", { href: "#", onclick: (e) => { e.preventDefault(); setView({ mode: "category", category: cat.id }); } }, cat.name) : h("span", { class: "muted" }, "None")),

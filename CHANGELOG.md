@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+Phase B1: AI tagging.
+
+- Admin page: choose Claude or a local OpenAI-compatible server (Ollama) and set model, text size, language and timeout. Keys stay on the server and are never shown again.
+- Tag with AI from the bookmark detail panel or in bulk; users can switch on automatic tagging of new bookmarks (also for bookmarks added from the extension).
+- AI never touches your own tags: it only replaces tags it added before (`ai_tags`, outlined in the UI). Suggested tags are mapped onto your existing tags (`java-script` becomes `javascript`) and your existing tags are offered to the model.
+- Server extracts page text (SSRF-protected) for the prompt; page text is treated as untrusted data.
+
 ## 0.2.0 (unreleased)
 
 Phase A: web app.

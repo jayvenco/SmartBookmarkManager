@@ -123,3 +123,4 @@ class UserSettings(BaseModel):
     unused_days: int = Field(default=90, ge=1, le=3650)
     auto_archive_unused: bool = False
     top_n: int = Field(default=10, ge=1, le=100)
+    ai_auto_tag: bool = False

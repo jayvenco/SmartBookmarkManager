@@ -1,3 +1,4 @@
+import { loadAi } from "./ai.js";
 import { api } from "./api.js";
 import { showAuth } from "./auth.js";
 import { bookmarkDialog } from "./dialogs.js";
@@ -21,7 +22,7 @@ async function boot() {
   state.user = me;
   if (window.innerWidth < 1180 && !booted) view.detail = false; // detail is an overlay on narrow screens
   try {
-    await load();
+    await Promise.all([load(), loadAi()]);
   } catch (e) {
     root.replaceChildren(h("div", { class: "auth" }, h("div", { class: "auth-card" }, h("h1", {}, "Cannot load your bookmarks"), h("div", { class: "err" }, e.message), h("button", { class: "btn primary", onclick: () => location.reload() }, "Retry"))));
     return;

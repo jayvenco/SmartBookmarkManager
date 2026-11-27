@@ -74,6 +74,7 @@ kbd { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; fon
 .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 button.tag:hover { filter: brightness(1.2); }
 .tag.on { outline: 2px solid var(--accent); }
+.tag.ai { box-shadow: inset 0 0 0 1px hsl(var(--h) 75% var(--tag-fg-l) / .55); }
 .tag .n { opacity: .7; font-size: 11px; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 5px; background: var(--input); border: 1px solid var(--border); border-radius: 8px; }
 .chips:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

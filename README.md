@@ -21,7 +21,9 @@ Self-hosted bookmark manager: an Edge (Chromium, Manifest V3) extension plus a s
 - Usage tracking per user (`open count`, `last opened`) is recorded from day one; the dashboard follows in phase 2.
 - One-time import of the Edge bookmarks.
 
-Not yet built: usage dashboard, AI features (summaries, tag suggestions, semantic search, duplicates, link health), knowledge graph, insights report (see PLAN.md).
+**AI tagging:** an admin picks Claude or a local server (Ollama) on the account page; the page text of a bookmark is sent to that provider to suggest 3 to 5 tags. Use *Tag with AI* in the detail panel or in bulk, or let users switch on automatic tagging in Settings. Your own tags are never changed.
+
+Not yet built: usage dashboard, other AI features (summaries, semantic search, duplicates, link health), knowledge graph, insights report (see PLAN.md).
 
 ### Page details and private addresses
 

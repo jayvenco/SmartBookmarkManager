@@ -10,7 +10,7 @@ Until the default password is changed, every endpoint except `/me` and `/auth/ch
 | POST | `/auth/logout` | revokes the token used for the request |
 | POST | `/auth/change-password` | `{current_password, new_password}` |
 | GET | `/me` | `{id, username, role, must_change_password}` |
-| GET / PUT | `/settings` | per-user settings: `unused_days` (default 90), `auto_archive_unused`, `top_n` (default 10) |
+| GET / PUT | `/settings` | per-user settings: `unused_days` (default 90), `auto_archive_unused`, `top_n` (default 10), `ai_auto_tag` (default false; tag new untagged bookmarks in the background when the server has AI on) |
 | GET | `/sync?since=<rev>` | everything changed after `rev` that the user can see |
 | POST | `/sync` | push changes and pull in one call (below) |
 | GET | `/bookmarks` | server-side search: `q`, `tag`, `collection_id`, `status`, `limit` |
@@ -42,7 +42,7 @@ Response: `{rev, bookmarks, collections, boards, usage, rejected}`. Store `rev` 
 - **Deletes** are tombstones (`deleted: true`) and are returned to other clients.
 - **Usage** is sent as increments (`opens` is added to the server total; `last_opened_at` is a max). The response holds absolute totals (`open_count`).
 - **Visibility:** a user sees their own records plus all `scope: "global"` records. Only admins can create global records; only the owner (or an admin, for global records) can edit. Refused changes are listed in `rejected` as `{type, id, reason}`.
-- Tags are lowercased and de-duplicated by the server. Allowed URL schemes: http, https, ftp, file, edge, chrome.
+- Tags are lowercased and de-duplicated by the server. Bookmarks in responses also carry `ai_tags`: the subset of `tags` the AI added (read-only, ignored when pushed; removing a tag removes it there too). Allowed URL schemes: http, https, ftp, file, edge, chrome.
 
 ## Naming
 
@@ -53,3 +53,7 @@ Only fields present in a pushed record are applied, so a client that does not kn
 The web app uses the same engine through cookie-authenticated `GET/POST /ui/sync` (not for scripts; use the Bearer endpoints above).
 
 Cookie-only: `GET /ui/extension.zip` downloads the browser extension (used by the web app's Settings).
+
+## AI tagging (cookie-only, web UI)
+
+`GET/PUT /ui/ai-settings` (admin; keys are write-only: omit to keep, `""` to remove), `POST /ui/ai-test` (admin), `GET /ui/ai-status`, `PUT /ui/ai-auto-tag` `{enabled}`, `POST /ui/ai/tag` `{ids: [up to 5]}` returns `{results: [{id, ok, ai_tags | error}]}`. Providers: Claude (Anthropic Messages API) or any OpenAI-compatible `/chat/completions` endpoint such as Ollama. Automatic tagging also runs after pushes through `/api/v1/sync` (extension) for users who enabled `ai_auto_tag`.

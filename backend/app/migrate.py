@@ -6,6 +6,7 @@ ADDED_COLUMNS = {
         ("pinned", "BOOLEAN NOT NULL DEFAULT 0"),
         ("image", "TEXT NOT NULL DEFAULT ''"),
         ("boards", "JSON NOT NULL DEFAULT '[]'"),
+        ("ai_tags", "JSON NOT NULL DEFAULT '[]'"),
     ],
 }
 
